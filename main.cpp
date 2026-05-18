@@ -1,0 +1,149 @@
+#include <iostream>
+#include <vector>
+#include <map>
+#include <set>
+#include <string>
+#include <algorithm>
+#include <sstream>
+
+using namespace std;
+
+// Conta o suporte de cada candidato nas transações
+map<vector<string>, int> contarSoporte(
+    const set<vector<string>>& candidatos,
+    const map<string, vector<string>>& transacciones)
+{
+    map<vector<string>, int> conteo;
+
+    for (const auto& [tid, items] : transacciones) {
+        set<string> items_set(items.begin(), items.end());
+
+        for (const auto& candidato : candidatos) {
+            bool subset = true;
+            for (const auto& item : candidato) {
+                if (items_set.find(item) == items_set.end()) {
+                    subset = false;
+                    break;
+                }
+            }
+            if (subset) {
+                conteo[candidato]++;
+            }
+        }
+    }
+
+    return conteo;
+}
+
+// Imprime um conjunto de itens
+void printConjunto(const vector<string>& conjunto) {
+    cout << "(";
+    for (size_t i = 0; i < conjunto.size(); ++i) {
+        cout << conjunto[i];
+        if (i + 1 < conjunto.size()) cout << ", ";
+    }
+    cout << ")";
+}
+
+int main() {
+    // Transações
+    map<string, vector<string>> transacciones = {
+        {"T100", {"I1", "I2", "I5"}},
+        {"T200", {"I2", "I4"}},
+        {"T300", {"I2", "I3"}},
+        {"T400", {"I1", "I2", "I4"}},
+        {"T500", {"I1", "I3"}},
+        {"T600", {"I2", "I3"}},
+        {"T700", {"I1", "I3"}},
+        {"T800", {"I1", "I2", "I3", "I5"}},
+        {"T900", {"I1", "I2", "I3"}}
+    };
+
+    int SupMin = 2;
+
+    // --- F1: Conjuntos frequentes de tamanho 1 ---
+    map<vector<string>, int> conteo_items;
+
+    for (const auto& [tid, items] : transacciones) {
+        for (const auto& item : items) {
+            conteo_items[{item}]++;
+        }
+    }
+
+    map<vector<string>, int> F1;
+    for (const auto& [item, soporte] : conteo_items) {
+        if (soporte >= SupMin) {
+            F1[item] = soporte;
+        }
+    }
+
+    cout << "F1 (Conjuntos frecuentes de tamaño 1)" << endl;
+    for (const auto& [item, soporte] : F1) {
+        printConjunto(item);
+        cout << " -> soporte = " << soporte << endl;
+    }
+
+    // --- APRIORI ---
+    map<vector<string>, int> Fk = F1;
+    int k = 1;
+
+    map<vector<string>, int> todos_frecuentes = F1;
+
+    while (!Fk.empty()) {
+        k++;
+
+        // Gerar candidatos Ck
+        vector<vector<string>> items_frecuentes;
+        for (const auto& [item, _] : Fk) {
+            items_frecuentes.push_back(item);
+        }
+
+        set<vector<string>> candidatos;
+
+        for (size_t i = 0; i < items_frecuentes.size(); ++i) {
+            for (size_t j = i + 1; j < items_frecuentes.size(); ++j) {
+                set<string> union_set(items_frecuentes[i].begin(), items_frecuentes[i].end());
+                union_set.insert(items_frecuentes[j].begin(), items_frecuentes[j].end());
+
+                if ((int)union_set.size() == k) {
+                    vector<string> union_vec(union_set.begin(), union_set.end());
+                    sort(union_vec.begin(), union_vec.end());
+                    candidatos.insert(union_vec);
+                }
+            }
+        }
+
+        cout << "\nC" << k << " (Candidatos)" << endl;
+        for (const auto& c : candidatos) {
+            printConjunto(c);
+            cout << endl;
+        }
+
+        // Contar suporte
+        map<vector<string>, int> conteo = contarSoporte(candidatos, transacciones);
+
+        // Gerar Fk
+        Fk.clear();
+        for (const auto& [candidato, soporte] : conteo) {
+            if (soporte >= SupMin) {
+                Fk[candidato] = soporte;
+            }
+        }
+
+        cout << "\nF" << k << " (Frecuentes)" << endl;
+        for (const auto& [item, soporte] : Fk) {
+            printConjunto(item);
+            cout << " -> soporte = " << soporte << endl;
+        }
+
+        todos_frecuentes.insert(Fk.begin(), Fk.end());
+    }
+
+    cout << "\nTODOS LOS CONJUNTOS FRECUENTES" << endl;
+    for (const auto& [conjunto, soporte] : todos_frecuentes) {
+        printConjunto(conjunto);
+        cout << " -> soporte = " << soporte << endl;
+    }
+
+    return 0;
+}
