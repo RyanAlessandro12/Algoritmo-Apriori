@@ -5,6 +5,7 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
+#include <limits>
 
 using namespace std;
 
@@ -45,21 +46,87 @@ void printConjunto(const vector<string>& conjunto) {
     cout << ")";
 }
 
-int main() {
-    // Transações
-    map<string, vector<string>> transacciones = {
-        {"T100", {"I1", "I2", "I5"}},
-        {"T200", {"I2", "I4"}},
-        {"T300", {"I2", "I3"}},
-        {"T400", {"I1", "I2", "I4"}},
-        {"T500", {"I1", "I3"}},
-        {"T600", {"I2", "I3"}},
-        {"T700", {"I1", "I3"}},
-        {"T800", {"I1", "I2", "I3", "I5"}},
-        {"T900", {"I1", "I2", "I3"}}
-    };
+string trim(const string& s) {
+    const string whitespace = " \t\r\n";
+    size_t start = s.find_first_not_of(whitespace);
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(whitespace);
+    return s.substr(start, end - start + 1);
+}
 
-    int SupMin = 2;
+bool parseTransactionLine(const string& line, string& tid, vector<string>& items) {
+    string trimmed = trim(line);
+    if (trimmed.empty()) return false;
+
+    vector<string> tokens;
+    string token;
+    stringstream ss(trimmed);
+    while (getline(ss, token, ',')) {
+        token = trim(token);
+        if (!token.empty()) {
+            tokens.push_back(token);
+        }
+    }
+
+    if (tokens.size() < 2) {
+        return false;
+    }
+
+    tid = tokens[0];
+    items.assign(tokens.begin() + 1, tokens.end());
+    return true;
+}
+
+int main() {
+    map<string, vector<string>> transacciones;
+
+    cout << "Ingrese transacciones en formato TID,I1,I2,..." << endl;
+    cout << "Por ejemplo: T100,I1,I2,I5" << endl;
+    cout << "Ingrese una transacción por línea. Deje una línea vacía para terminar." << endl;
+
+    string line;
+    while (true) {
+        cout << "> ";
+        if (!getline(cin, line) || trim(line).empty()) {
+            break;
+        }
+
+        string tid;
+        vector<string> items;
+        if (!parseTransactionLine(line, tid, items)) {
+            cout << "Formato inválido. Use: T100,I1,I2,..." << endl;
+            continue;
+        }
+
+        transacciones[tid] = items;
+    }
+
+    if (transacciones.empty()) {
+        cout << "No se ingresaron transacciones. Se usarán datos de ejemplo." << endl;
+        transacciones = {
+            {"T100", {"I1", "I2", "I5"}},
+            {"T200", {"I2", "I4"}},
+            {"T300", {"I2", "I3"}},
+            {"T400", {"I1", "I2", "I4"}},
+            {"T500", {"I1", "I3"}},
+            {"T600", {"I2", "I3"}},
+            {"T700", {"I1", "I3"}},
+            {"T800", {"I1", "I2", "I3", "I5"}},
+            {"T900", {"I1", "I2", "I3"}}
+        };
+    }
+
+    int SupMin;
+    while (true) {
+        cout << "Ingrese soporte mínimo (entero >= 1): ";
+        if (cin >> SupMin && SupMin >= 1) {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            break;
+        }
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Soporte inválido. Ingrese un número entero mayor o igual a 1." << endl;
+    }
 
     // --- F1: Conjuntos frequentes de tamanho 1 ---
     map<vector<string>, int> conteo_items;
